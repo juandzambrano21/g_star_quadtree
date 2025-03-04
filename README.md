@@ -1,25 +1,15 @@
-A Python implementation of a dynamically evolving quadtree, featuring:
+# Dynamically evolving Quadtree System Architecture
 
-- **Lazy Subdivision & Merging:**  
-  The quadtree covers the unit square and subdivides nodes on demand when the load (i.e. update count) exceeds a specified split threshold. Conversely, nodes merge when their children’s combined load falls below a merge threshold. When subdividing, the parent node's load is evenly distributed among the children to prevent rapid re‑splitting in hot regions.
+The system is engineered to support dynamic load management, interactive hyperparameter tuning, and concurrent operations in a thread‐safe manner. The overall structure is organized to ensure that all tree modifications, load decay, and visualization updates occur in a consistent, synchronized context.
 
-- **Load Decay:**  
-  The system continuously decays the load over time (using a configurable decay factor and interval). This prevents obsolete load from causing unnecessary subdivisions.
+## System Overview
 
-- **Thread-Safe Operations:**  
-  All operations on the quadtree are protected by a global reentrant lock (RLock) so that updates, splits, merges, and visualization happen in a consistent, thread‑safe manner.
+At its core, the quadtree represents a partitioning of the unit square into hierarchical regions. Each region is modeled as a node, and the system supports lazy subdivision based on load thresholds. When the load of a node exceeds the configured split threshold, the node subdivides into four child regions. Conversely, when the aggregate load of a node's children falls below the merge threshold, those children are merged back into their parent. Load decay is continuously applied to all leaf nodes, ensuring that outdated activity does not accumulate indefinitely.
 
-- **Adaptive Controller:**  
-  A background thread periodically prints current hyperparameters and triggers periodic merging of nodes.
+To maintain consistency across multiple threads, the system employs a global reentrant lock. This lock encapsulates all operations on the quadtree, including insertion, subdivision, merging, and load decay. The use of a single global lock simplifies the concurrency model while providing strong consistency guarantees. The system also leverages a base thread class to facilitate graceful termination of background processes.
 
-- **Interactive Hyperparameter Tuning:**  
-  The visualization window (built using Matplotlib) includes interactive sliders that let you adjust the following in real time:
-  - **Split Threshold:** The load at which a node subdivides.
-  - **Merge Threshold:** The maximum total load of children that allows merging.
-  - **Decay Factor:** The multiplier applied to load on each decay pass.
-  - **Decay Interval:** The time interval (in seconds) between load decay passes.
+The load management mechanism is twofold. First, when a node subdivides, its current load is evenly distributed among the four child nodes, thereby preserving a measure of the past activity without overloading the new leaves. Second, a dedicated load decay process periodically reduces the load on each leaf node by a configurable decay factor. If a node’s load becomes negligibly small, it is reset to zero. This dual approach of load distribution and decay mitigates the risk of rapid, repeated subdivisions (thrashing) and ensures that the quadtree adapts smoothly to changes in usage.
 
-  There is also a pause/resume button to temporarily halt worker updates, so you can better observe the merging and decay behavior.
+An adaptive controller operates periodically, printing the current system parameters and enforcing a periodic merge across the tree. The merge process evaluates whether the combined load of sibling nodes falls below the merge threshold; if so, it merges them, aggregating their load in the parent node. Additionally, interactive controls are provided through a graphical interface. Hyperparameters such as the split threshold, merge threshold, decay factor, and decay interval can be tuned in real time via sliders, while a pause/resume control allows for temporary suspension of updates. These interactive elements enable immediate visual feedback and facilitate the fine-tuning of system behavior.
 
-- **Live Visualization:**  
-  Matplotlib's `FuncAnimation` updates the display in real time, drawing each leaf node as a rectangle annotated with its level and current (decayed) load.
+The visualization component uses Matplotlib’s animation framework to render the current state of the quadtree. The animation periodically obtains a consistent snapshot of the leaf nodes, which are then drawn as rectangles annotated with their respective levels and current loads. This live display not only demonstrates the dynamic adaptation of the quadtree but also serves as an interactive tool for monitoring the effects of parameter changes and load decay in real time.
